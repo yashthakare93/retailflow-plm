@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -27,40 +28,49 @@ public class UserService {
     private RoleRepository roleRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder; // Injected PasswordEncoder
 
-    public User registerNewUser(String username, String email, String rawPassword, String roleName) {
-        if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("Username already exists: " + username);
+    public User registerNewUser(User user) {
+        logger.info("Attempting to register new user: {}", user.getUsername());
+
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new IllegalArgumentException("Username already exists: " + user.getUsername());
         }
-        if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email already exists: " + email);
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new IllegalArgumentException("Email already registered: " + user.getEmail());
         }
 
-        User user = new User();
-        user.setUsername(username);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(rawPassword)); // Encode the password
+        // Encode the raw password before saving
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        // Assign role
-        Optional<Role> optionalRole = roleRepository.findByName(roleName);
-        if (!optionalRole.isPresent()) {
-            throw new RuntimeException("Role not found: " + roleName);
+        // Assign roles based on the 'role' field in the incoming User object
+        Set<Role> userRoles = new HashSet<>();
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            // Assume the user object comes with role names (e.g., "ROLE_DESIGNER")
+            for (Role requestedRole : user.getRoles()) {
+                Optional<Role> existingRole = roleRepository.findByName(requestedRole.getName());
+                if (existingRole.isPresent()) {
+                    userRoles.add(existingRole.get());
+                } else {
+                    // Handle case where requested role doesn't exist, e.g., create it or throw error
+                    logger.warn("Requested role {} does not exist. Assigning default ROLE_USER.", requestedRole.getName());
+                    userRoles.add(roleRepository.findByName("ROLE_USER")
+                                  .orElseThrow(() -> new IllegalStateException("Default ROLE_USER not found!")));
+                }
+            }
+        } else {
+            // Default to ROLE_USER if no roles are specified in the request
+            userRoles.add(roleRepository.findByName("ROLE_USER")
+                          .orElseThrow(() -> new IllegalStateException("Default ROLE_USER not found!")));
         }
-        Set<Role> roles = new HashSet<>();
-        roles.add(optionalRole.get());
-        user.setRoles(roles);
+        user.setRoles(userRoles); // Set the managed roles on the user object
 
         User savedUser = userRepository.save(user);
-        logger.info("New user registered: {}", savedUser.getUsername());
+        logger.info("User {} registered successfully with roles: {}", savedUser.getUsername(), savedUser.getRoles());
         return savedUser;
     }
 
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
-    }
-    
-    public User saveUser(User user) {
-        return userRepository.save(user);
     }
 }

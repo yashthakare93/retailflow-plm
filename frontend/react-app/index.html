@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RetailFlow PLM</title>
+    <!-- Tailwind CSS CDN - Ensure it's correctly loaded for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom styles for status badges */
+      .status-badge {
+        font-size: 0.8em;
+        padding: 0.25em 0.6em;
+        border-radius: 0.25rem;
+      }
+      .status-DESIGN { background-color: #ffc107; color: black; } /* yellow */
+      .status-PROTOTYPE { background-color: #0dcaf0; color: black; } /* cyan */
+      .status-APPROVED { background-color: #198754; color: white; } /* green */
+      .status-PRODUCTION { background-color: #fd7e14; color: white; } /* orange */
+      .status-MARKET { background-color: #0d6efd; color: white; } /* blue */
+      .status-DISCONTINUED { background-color: #6c757d; color: white; } /* gray */
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

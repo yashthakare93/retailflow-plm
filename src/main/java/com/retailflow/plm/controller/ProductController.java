@@ -14,28 +14,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * REST controller for managing product-related operations.
- * 
- * <p>Handles endpoints for creating, retrieving, and updating products and filtering by status.
- * All endpoints are prefixed with "/api/products".</p>
- */
+// @CrossOrigin(origins = "*") // REMOVE THIS LINE
 @RestController
 @RequestMapping("/api/products")
-@CrossOrigin(origins = "*") // Allows cross-origin requests from any domain (suitable for dev)
 public class ProductController {
-
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
-
+    
     @Autowired
     private ProductService productService;
-
+    
     /**
-     * GET /api/products
-     * 
-     * Retrieves and returns a list of all products in the system.
-     * 
-     * @return List of Product objects with HTTP 200 OK
+     * GET /api/products - Retrieves all products.
+     * @return A list of all products with HTTP status 200 OK.
      */
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
@@ -43,30 +33,24 @@ public class ProductController {
         List<Product> products = productService.getAllProducts();
         return ResponseEntity.ok(products);
     }
-
+    
     /**
-     * GET /api/products/{id}
-     * 
-     * Retrieves a specific product by its unique ID.
-     * 
-     * @param id The product ID to look up
-     * @return Product if found (HTTP 200 OK), otherwise HTTP 404 Not Found
+     * GET /api/products/{id} - Retrieves a product by its database ID.
+     * @param id The ID of the product.
+     * @return The product with HTTP status 200 OK, or 404 Not Found if not found.
      */
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         logger.info("GET /api/products/{} - Fetching product by ID", id);
         Optional<Product> product = productService.getProductById(id);
         return product.map(ResponseEntity::ok)
-                      .orElse(ResponseEntity.notFound().build());
+                     .orElse(ResponseEntity.notFound().build());
     }
-
+    
     /**
-     * POST /api/products
-     * 
-     * Creates a new product with the details provided in the request body.
-     * 
-     * @param product The Product object to be created
-     * @return The created product (HTTP 201 Created), or HTTP 400 Bad Request on failure
+     * POST /api/products - Creates a new product.
+     * @param product The Product object to create (sent in the request body).
+     * @return The created product with HTTP status 201 Created, or 400 Bad Request on error.
      */
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {
@@ -79,42 +63,39 @@ public class ProductController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    
     /**
-     * PUT /api/products/{id}/status
-     * 
-     * Updates the status of an existing product.
-     * 
-     * @param id The ID of the product to update
-     * @param statusUpdate JSON body containing a "status" field (e.g., {"status": "PROTOTYPE"})
-     * @return The updated product (HTTP 200 OK), HTTP 404 Not Found if not found, or HTTP 400 if invalid status
+     * PUT /api/products/{id}/status - Updates the status of an existing product.
+     * @param id The ID of the product to update.
+     * @param statusUpdate A map containing the new status (e.g., {"status": "PROTOTYPE"}).
+     * @return The updated product with HTTP status 200 OK, or 404 Not Found if product doesn't exist,
+     * or 400 Bad Request if the status value is invalid.
      */
     @PutMapping("/{id}/status")
     public ResponseEntity<Product> updateProductStatus(
-            @PathVariable Long id,
+            @PathVariable Long id, 
             @RequestBody Map<String, String> statusUpdate) {
         logger.info("PUT /api/products/{}/status - Updating product status", id);
         try {
+            // Convert string status from request to ProductStatus enum
             ProductStatus newStatus = ProductStatus.valueOf(statusUpdate.get("status").toUpperCase());
             Optional<Product> updatedProduct = productService.updateProductStatus(id, newStatus);
             return updatedProduct.map(ResponseEntity::ok)
-                                 .orElse(ResponseEntity.notFound().build());
+                                .orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {
+            // Catches error if ProductStatus.valueOf() fails (invalid status string)
             logger.error("Invalid product status provided: {}", statusUpdate.get("status"), e);
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(null); // Or return a more descriptive error object
         } catch (Exception e) {
             logger.error("Error updating product status for ID {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
+    
     /**
-     * GET /api/products/status/{status}
-     * 
-     * Retrieves all products filtered by a specific status.
-     * 
-     * @param status The status to filter products by (e.g., DESIGN, PROTOTYPE)
-     * @return List of products matching the status (HTTP 200 OK), or HTTP 400 if status is invalid
+     * GET /api/products/status/{status} - Retrieves products filtered by status.
+     * @param status The status string (e.g., "DESIGN") to filter products by.
+     * @return A list of products matching the status with HTTP status 200 OK, or 400 Bad Request if status is invalid.
      */
     @GetMapping("/status/{status}")
     public ResponseEntity<List<Product>> getProductsByStatus(@PathVariable String status) {
@@ -124,6 +105,7 @@ public class ProductController {
             List<Product> products = productService.getProductsByStatus(productStatus);
             return ResponseEntity.ok(products);
         } catch (IllegalArgumentException e) {
+            // Catches error if ProductStatus.valueOf() fails (invalid status string)
             logger.error("Invalid status: {}", status, e);
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
