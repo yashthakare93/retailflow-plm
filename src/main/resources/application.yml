@@ -1,65 +1,107 @@
-spring:
-  profiles:
-    active: dev # Activate the 'dev' profile by default for local runs
-  
-  application:
-    name: retailflow-plm
-  
-  datasource:
-    url: jdbc:postgresql://localhost:5432/retailflow_plm
-    username: ${DB_USERNAME:plm_user}
-    password: ${DB_PASSWORD:plm_password}
-    driver-class-name: org.postgresql.Driver
-  
-  jpa:
-    hibernate:
-      ddl-auto: update # Allows Hibernate to create/update tables based on entities
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-  
-  sql:
-    init:
-      mode: always # Always run schema.sql on startup
-      schema-locations: classpath:schema.sql
+    # Default profile for local development (dev profile activated by spring.profiles.active)
+    spring:
+      profiles:
+        active: dev # Activate the 'dev' profile by default for local runs
+      
+      application:
+        name: retailflow-plm
+      
+      datasource:
+        url: jdbc:postgresql://localhost:5432/retailflow_plm
+        username: ${DB_USERNAME:plm_user}
+        password: ${DB_PASSWORD:plm_password}
+        driver-class-name: org.postgresql.Driver
+      
+      jpa:
+        hibernate:
+          ddl-auto: update # Allows Hibernate to create/update tables based on entities for dev
+        show-sql: false
+        properties:
+          hibernate:
+            dialect: org.hibernate.dialect.PostgreSQLDialect
+            format_sql: true
+      
+      sql:
+        init:
+          mode: always # Always run schema.sql on startup for dev
+          schema-locations: classpath:schema.sql
 
-server:
-  port: 8080
+    server:
+      port: 8080
 
-jwt: # JWT secret for future use, not currently active for authentication
-  secret: AVeryLongAndSecureSecretKeyForJWTTokenGenerationWhichShouldBeAtLeast32BytesLong
+    jwt: # JWT secret for future use, not currently active for authentication
+      secret: AVeryLongAndSecureSecretKeyForJWTTokenGenerationWhichShouldBeAtLeast32BytesLong
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,loggers
-  endpoint:
-    health:
-      show-details: always
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,loggers
+      endpoint:
+        health:
+          show-details: always
 
-logging:
-  level:
-    com.retailflow.plm: INFO
-    org.springframework.web: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: /var/log/retailflow-plm/application.log # Default local log file
+    logging:
+      level:
+        com.retailflow.plm: INFO
+        org.springframework.web: DEBUG # Keep DEBUG or TRACE for local dev, switch to INFO for prod logging profile
+      pattern:
+        console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+        file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+      file:
+        name: /var/log/retailflow-plm/application.log # Default local log file
 
---- # Spring Profile for AWS deployment
-spring:
-  config:
-    activate:
-      on-profile: aws
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:retailflow_plm}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    --- # Spring Profile for AWS deployment (Placeholder if not using Render)
+    spring:
+      config:
+        activate:
+          on-profile: aws
+      datasource:
+        url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
 
-logging:
-  file:
-    name: /home/ec2-user/retailflow-plm/logs/application.log
+    logging:
+      file:
+        name: /home/ec2-user/retailflow-plm/logs/application.log
+
+    --- # Spring Profile for PRODUCTION deployment on Render.com
+    spring:
+      config:
+        activate:
+          on-profile: prod
+      datasource:
+        # Render provides DATABASE_URL which is a complete JDBC URL, e.g., postgres://user:password@host:port/database
+        url: ${DATABASE_URL}
+        # Render also provides individual components, if you prefer to build the URL yourself or specific drivers need them
+        # username: ${PGUSER}
+        # password: ${PGPASSWORD}
+        # driver-class-name: org.postgresql.Driver # Often detected automatically
+
+      jpa:
+        hibernate:
+          # VERY IMPORTANT for production: 'validate' ensures schema matches entities, 'none' does nothing
+          # Use database migration tools (Flyway/Liquibase) for schema changes in prod, NOT 'update'
+          ddl-auto: validate 
+        show-sql: false # Set to true for debugging, false for production
+        properties:
+          hibernate:
+            dialect: org.hibernate.dialect.PostgreSQLDialect
+            format_sql: false # Set to true for debugging, false for production
+
+      sql:
+        init:
+          # VERY IMPORTANT for production: 'never' prevents schema.sql from running automatically
+          # This should be handled by Flyway/Liquibase or manual SQL for initial setup
+          mode: never 
+
+    server:
+      port: ${PORT} # Render injects the port your app should listen on
+
+    logging:
+      level:
+        # Set logging to INFO for production to avoid excessive logs
+        com.retailflow.plm: INFO 
+        org.springframework.web: INFO
+      file:
+        name: /var/log/retailflow-plm/application.log 
