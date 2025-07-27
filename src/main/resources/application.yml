@@ -1,0 +1,65 @@
+spring:
+  profiles:
+    active: dev # Activate the 'dev' profile by default for local runs
+  
+  application:
+    name: retailflow-plm
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/retailflow_plm
+    username: ${DB_USERNAME:plm_user}
+    password: ${DB_PASSWORD:plm_password}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update # Allows Hibernate to create/update tables based on entities
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  sql:
+    init:
+      mode: always # Always run schema.sql on startup
+      schema-locations: classpath:schema.sql
+
+server:
+  port: 8080
+
+jwt: # JWT secret for future use, not currently active for authentication
+  secret: AVeryLongAndSecureSecretKeyForJWTTokenGenerationWhichShouldBeAtLeast32BytesLong
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.retailflow.plm: INFO
+    org.springframework.web: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /var/log/retailflow-plm/application.log # Default local log file
+
+--- # Spring Profile for AWS deployment
+spring:
+  config:
+    activate:
+      on-profile: aws
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:retailflow_plm}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+logging:
+  file:
+    name: /home/ec2-user/retailflow-plm/logs/application.log
